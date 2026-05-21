@@ -1,0 +1,112 @@
+const express = require('express');
+const router = express.Router();
+const PDFDocument = require('pdfkit');
+const Scholarship = require('../models/Scholarship');
+
+/**
+ * GET /api/pdf/scholarship/:id
+ * Generate and stream a PDF for a scholarship
+ */
+router.get('/scholarship/:id', async (req, res) => {
+  try {
+    const scholarship = await Scholarship.findById(req.params.id);
+    if (!scholarship) {
+      return res.status(404).json({ success: false, message: 'Scholarship not found' });
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+    const filename = `${scholarship.name.replace(/\s+/g, '_')}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    doc.pipe(res);
+
+    // ─── Header Banner ────────────────────────────────────────────────────────
+    doc.rect(0, 0, doc.page.width, 80).fill('#4f46e5');
+    doc.fillColor('white').fontSize(22).font('Helvetica-Bold').text('ScholarPath', 50, 20);
+    doc.fontSize(12).font('Helvetica').text('Scholarship Details Report', 50, 48);
+
+    // ─── Title ────────────────────────────────────────────────────────────────
+    doc.fillColor('#1e1b4b').fontSize(20).font('Helvetica-Bold').text(scholarship.name, 50, 100);
+    doc.fillColor('#4f46e5').fontSize(13).font('Helvetica').text(`Provider: ${scholarship.provider}`, 50, 128);
+
+    // ─── Amount Box ───────────────────────────────────────────────────────────
+    doc.rect(50, 150, doc.page.width - 100, 50).fill('#f0f0ff');
+    doc.fillColor('#4f46e5').fontSize(14).font('Helvetica-Bold')
+      .text(`Scholarship Amount: Rs. ${scholarship.amount.toLocaleString()}`, 65, 165);
+
+    // ─── Details Table ────────────────────────────────────────────────────────
+    let y = 220;
+    const rows = [
+      ['Category', scholarship.category],
+      ['Deadline', new Date(scholarship.deadline).toDateString()],
+      ['Min. Percentage', scholarship.minPercentage > 0 ? `${scholarship.minPercentage}%` : 'No minimum'],
+      ['Min. CGPA', scholarship.minCGPA > 0 ? `${scholarship.minCGPA}` : 'No minimum'],
+      ['Max. Annual Income', scholarship.maxAnnualIncome && scholarship.maxAnnualIncome < 1e15
+        ? `Rs. ${Number(scholarship.maxAnnualIncome).toLocaleString()}` : 'No limit'],
+      ['Eligible Communities', scholarship.eligibleCommunities?.join(', ') || 'All'],
+      ['Eligible Genders', scholarship.eligibleGenders?.join(', ') || 'All'],
+      ['Eligible States', scholarship.eligibleStates?.join(', ') || 'All India'],
+      ['Eligible Courses', scholarship.eligibleCourses?.join(', ') || 'All'],
+    ];
+
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Scholarship Details', 50, y);
+    y += 20;
+
+    rows.forEach(([label, value], i) => {
+      const bg = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+      doc.rect(50, y, doc.page.width - 100, 24).fill(bg);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica-Bold').text(label, 60, y + 7);
+      doc.fillColor('#0f172a').fontSize(10).font('Helvetica').text(String(value), 220, y + 7);
+      y += 24;
+    });
+
+    // ─── Description ──────────────────────────────────────────────────────────
+    if (scholarship.description) {
+      y += 16;
+      doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('About This Scholarship', 50, y);
+      y += 18;
+      doc.fillColor('#475569').fontSize(10).font('Helvetica')
+        .text(scholarship.description, 50, y, { width: doc.page.width - 100, lineGap: 4 });
+      y = doc.y + 16;
+    }
+
+    // ─── Eligibility Criteria ─────────────────────────────────────────────────
+    if (scholarship.eligibilityCriteria) {
+      doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Eligibility Criteria', 50, y);
+      y += 18;
+      doc.fillColor('#475569').fontSize(10).font('Helvetica')
+        .text(scholarship.eligibilityCriteria, 50, y, { width: doc.page.width - 100, lineGap: 4 });
+      y = doc.y + 16;
+    }
+
+    // ─── Required Documents ───────────────────────────────────────────────────
+    if (scholarship.requiredDocuments?.length) {
+      doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Required Documents', 50, y);
+      y += 18;
+      scholarship.requiredDocuments.forEach((d) => {
+        doc.fillColor('#475569').fontSize(10).font('Helvetica').text(`• ${d}`, 60, y);
+        y += 16;
+      });
+      y += 8;
+    }
+
+    // ─── Application Link ─────────────────────────────────────────────────────
+    if (scholarship.applicationLink) {
+      doc.fillColor('#4f46e5').fontSize(11).font('Helvetica')
+        .text(`Apply at: ${scholarship.applicationLink}`, 50, y);
+    }
+
+    // ─── Footer ───────────────────────────────────────────────────────────────
+    doc.rect(0, doc.page.height - 40, doc.page.width, 40).fill('#4f46e5');
+    doc.fillColor('white').fontSize(9).font('Helvetica')
+      .text(`Generated by ScholarPath • ${new Date().toDateString()}`, 50, doc.page.height - 25);
+
+    doc.end();
+  } catch (err) {
+    console.error('PDF generation error:', err);
+    res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+  }
+});
+
+module.exports = router;
