@@ -17,7 +17,7 @@ const SORT_OPTIONS = [
 
 const ScholarshipsPage = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [scholarships, setScholarships] = useState([]);
   const [recommendations, setRecommendations] = useState({});
   const [savedIds, setSavedIds] = useState(new Set());

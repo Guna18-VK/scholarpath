@@ -33,7 +33,7 @@ const AdminDashboard = () => {
   const [form, setForm] = useState(EMPTY_SCHOLARSHIP);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { fetchData(); }, [activeTab]);
+  useEffect(() => { fetchData(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = async () => {
     setLoading(true);
