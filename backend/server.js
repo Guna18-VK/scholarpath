@@ -92,6 +92,15 @@ cron.schedule('0 8 * * *', async () => {
   }
 });
 
+// ─── Keep-alive ping every 14 minutes (prevents Render free tier cold start) ──
+cron.schedule('*/14 * * * *', () => {
+  const http = require('https');
+  const url = process.env.RENDER_EXTERNAL_URL || `https://scholarpath-backend-umli.onrender.com`;
+  http.get(`${url}/api/health`, (res) => {
+    console.log(`🏓 Keep-alive ping: ${res.statusCode}`);
+  }).on('error', () => {});
+});
+
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
