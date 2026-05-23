@@ -31,26 +31,18 @@ router.post('/register', async (req, res) => {
 
     const user = await User.create({ name, email, password, otp, otpExpiry });
 
-    // Always log OTP in development for testing without email
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`\n📧 OTP for ${email}: ${otp}\n`);
-    }
-
-    // Send verification email — non-fatal if it fails
-    try {
-      await sendOTPEmail(email, otp);
-    } catch (emailErr) {
-      console.error('Email send failed:', emailErr.message);
-    }
-
+    // ── Respond IMMEDIATELY — before email attempt ──────────────────────────
     res.status(201).json({
       success: true,
-      message: process.env.NODE_ENV === 'development'
-        ? 'Registration successful. Check backend console for OTP (email not configured).'
-        : 'Registration successful. Please verify your email with the OTP sent.',
+      message: 'Registration successful. Please verify with the OTP.',
       userId: user._id,
-      // Send OTP directly in dev mode so frontend can show it
-      devOtp: process.env.NODE_ENV === 'development' ? otp : undefined,
+      devOtp: otp, // Always return OTP so user can verify even if email fails
+    });
+
+    // ── Send email in background after response is sent ─────────────────────
+    console.log(`📧 OTP for ${email}: ${otp}`);
+    setImmediate(() => {
+      sendOTPEmail(email, otp); // fire and forget
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -94,22 +86,19 @@ router.post('/resend-otp', async (req, res) => {
     await user.save();
 
     // Always log OTP in development so you can test without email configured
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`\n📧 OTP for ${user.email}: ${otp}\n`);
-    }
+    console.log(`📧 OTP for ${user.email}: ${otp}`);
 
-    // Try to send email — if it fails, still return success so user can use console OTP
-    try {
-      await sendOTPEmail(user.email, otp);
-      res.json({ success: true, message: 'OTP resent to your email' });
-    } catch (emailErr) {
-      console.error('Email send failed:', emailErr.message);
-      // In development, tell user to check console
-      const msg = process.env.NODE_ENV === 'development'
-        ? 'Email not configured. Check backend console for OTP.'
-        : 'Failed to send email. Please try again later.';
-      res.json({ success: true, message: msg, devOtp: process.env.NODE_ENV === 'development' ? otp : undefined });
-    }
+    // ── Respond IMMEDIATELY — don't wait for email ──────────────────────────
+    res.json({
+      success: true,
+      message: 'OTP sent! Check your email (or use the OTP shown below).',
+      devOtp: otp,
+    });
+
+    // ── Send email in background (non-blocking) ─────────────────────────────
+    sendOTPEmail(user.email, otp).catch((err) => {
+      console.error('Resend email failed (non-fatal):', err.message);
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -155,8 +144,12 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendPasswordResetEmail(email, otp);
-    res.json({ success: true, message: 'Password reset OTP sent to your email', userId: user._id });
+    // Respond immediately, send email in background
+    console.log(`📧 Reset OTP for ${email}: ${otp}`);
+    res.json({ success: true, message: 'Password reset OTP sent to your email', userId: user._id, devOtp: otp });
+    sendPasswordResetEmail(email, otp).catch((err) => {
+      console.error('Reset email failed (non-fatal):', err.message);
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
