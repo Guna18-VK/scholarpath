@@ -17,6 +17,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [justRegistered, setJustRegistered] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [slowWarning, setSlowWarning] = useState(false);
 
   // ─── Saved emails state ───────────────────────────────────────────────────
   const [savedEmails, setSavedEmails] = useState([]);
@@ -145,20 +146,24 @@ const LoginPage = () => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setSlowWarning(false);
+
+    const slowTimer = setTimeout(() => setSlowWarning(true), 5000);
+
     try {
       const res = await api.post('/auth/login', form);
+      clearTimeout(slowTimer);
+      setSlowWarning(false);
       login(res.data.token, res.data.user);
-
-      // Auto-save email on successful login if not already saved
       if (!isEmailSaved(form.email)) {
-        // Don't force-save — just update the list if it was previously saved
       } else {
-        saveEmail(form.email); // move to top (most recently used)
+        saveEmail(form.email);
       }
-
       toast.success(`Welcome back, ${res.data.user.name}! 👋`);
       navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
+      clearTimeout(slowTimer);
+      setSlowWarning(false);
       const msg = err.response?.data?.message || 'Login failed';
       if (err.response?.data?.userId) {
         toast.error('Please verify your email first');
@@ -351,9 +356,17 @@ const LoginPage = () => {
 
             <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}>
               {loading
-                ? <><span className="spinner spinner-sm" /> Signing in...</>
+                ? <>
+                    <span className="spinner spinner-sm" />
+                    {slowWarning ? 'Server waking up... please wait' : 'Signing in...'}
+                  </>
                 : justRegistered ? '🚀 Sign In & Get Started' : 'Sign In'}
             </button>
+            {slowWarning && (
+              <div className="slow-warning">
+                ⏳ Server is starting up — this takes up to 30 seconds on first use. Please wait...
+              </div>
+            )}
           </form>
 
           {/* Demo Accounts */}

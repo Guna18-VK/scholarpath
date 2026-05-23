@@ -13,6 +13,7 @@ const RegisterPage = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [slowWarning, setSlowWarning] = useState(false);
 
   // ─── Validation ───────────────────────────────────────────────────────────
   const validate = () => {
@@ -32,24 +33,33 @@ const RegisterPage = () => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setSlowWarning(false);
+
+    // Show slow warning after 5 seconds (Render free tier cold start)
+    const slowTimer = setTimeout(() => setSlowWarning(true), 5000);
+
     try {
       const res = await api.post('/auth/register', {
         name: form.name,
         email: form.email,
         password: form.password,
       });
+      clearTimeout(slowTimer);
+      setSlowWarning(false);
       setUserId(res.data.userId);
       setStep(2);
 
-      // Dev mode: auto-fill OTP
+      // Always show OTP on screen for immediate verification
       if (res.data.devOtp) {
         setOtp(res.data.devOtp.split(''));
-        toast.success(`Dev mode: OTP auto-filled → ${res.data.devOtp}`);
+        toast.success(`OTP auto-filled! Check your email too.`, { duration: 6000 });
       } else {
         toast.success('OTP sent to your email!');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      clearTimeout(slowTimer);
+      setSlowWarning(false);
+      toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -218,8 +228,18 @@ const RegisterPage = () => {
                 </div>
 
                 <button type="submit" className="btn btn-primary w-full btn-lg" disabled={loading}>
-                  {loading ? <><span className="spinner spinner-sm" /> Creating account...</> : 'Create Account'}
+                  {loading ? (
+                    <>
+                      <span className="spinner spinner-sm" />
+                      {slowWarning ? 'Server waking up... please wait (30s)' : 'Creating account...'}
+                    </>
+                  ) : 'Create Account'}
                 </button>
+                {slowWarning && (
+                  <div className="slow-warning">
+                    ⏳ Server is starting up on free hosting — this takes up to 30 seconds on first use. Please wait...
+                  </div>
+                )}
               </form>
               <p className="auth-switch mt-2">
                 Already have an account? <Link to="/login">Sign in</Link>

@@ -363,3 +363,18 @@
   background: rgba(239,68,68,0.1);
   color: var(--danger);
 }
+
+/* ─── Slow Warning (Render cold start) ───────────────────────────────────── */
+.slow-warning {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #92400e;
+  text-align: center;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+}
+[data-theme='dark'] .slow-warning { color: #fbbf24; }
