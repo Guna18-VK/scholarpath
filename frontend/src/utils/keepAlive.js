@@ -6,7 +6,7 @@
 
 const BACKEND_HEALTH_URL = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/health`
-  : 'https://scholarpath-backend-umli.onrender.com/api/health';
+  : 'https://scholarpath-backend-t0ar.onrender.com/api/health';
 
 const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
 

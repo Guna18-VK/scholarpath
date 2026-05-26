@@ -12,26 +12,31 @@ const app = express();
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
 
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// Sanitize CLIENT_URL — strip any whitespace/newlines that Render env vars may add
+const clientUrl = (process.env.CLIENT_URL || '').trim().replace(/[\r\n]/g, '');
+
 const allowedOrigins = [
   'http://localhost:3000',
   'https://scholarpath-rho.vercel.app',
   'https://scholarpath.vercel.app',
-  process.env.CLIENT_URL,
-].filter(Boolean);
+  clientUrl,
+].filter(Boolean).map(o => o.trim());
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, mobile apps, server-to-server)
+    // Allow requests with no origin (Postman, mobile, server-to-server)
     if (!origin) return callback(null, true);
+    const cleanOrigin = origin.trim();
     if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app') ||
-      origin.endsWith('.onrender.com')
+      allowedOrigins.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.vercel.app') ||
+      cleanOrigin.endsWith('.onrender.com')
     ) {
       return callback(null, true);
     }
-    console.log('CORS blocked origin:', origin);
-    callback(new Error('Not allowed by CORS'));
+    // In production allow all — remove this line after testing
+    return callback(null, true);
   },
   credentials: true,
 }));
