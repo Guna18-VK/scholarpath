@@ -4,7 +4,8 @@ services:
     env: node
     region: singapore
     plan: free
-    buildCommand: npm install --production=false
+    rootDir: backend
+    buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:
@@ -27,4 +28,4 @@ services:
       - key: EMAIL_PASS
         sync: false
       - key: CLIENT_URL
-        sync: false
+        value: https://scholarpath-rho.vercel.app
