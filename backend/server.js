@@ -43,12 +43,12 @@ app.use(cors({
 
 // ─── Health Check — MUST be before rate limiter and 404 handler ───────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date(), env: process.env.NODE_ENV });
+  res.json({ status: 'OK', timestamp: new Date(), env: process.env.NODE_ENV, version: '2.0' });
 });
 
-// Root route — so Render's health check on "/" also works
+// Root route
 app.get('/', (req, res) => {
-  res.json({ message: 'ScholarPath API is running', status: 'OK' });
+  res.json({ message: 'ScholarPath API is running', status: 'OK', version: '2.0' });
 });
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
